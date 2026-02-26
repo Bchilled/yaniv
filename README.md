@@ -10,7 +10,11 @@ Open `index.html` in a browser.
 
 1. Host the folder on any HTTPS site (GitHub Pages works).
 2. Open the link in Safari.
-3. Tap Share ? Add to Home Screen.
+3. Tap Share → Add to Home Screen.
+
+## Live Link
+
+`https://bchilled.github.io/yaniv/`
 
 ## Settings
 
