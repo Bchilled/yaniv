@@ -198,14 +198,14 @@ function startGame() {
   state.selected.clear();
   state.phase = 'player';
   renderGame();
-  log(`Match found vs ${match.opponents.map((o) => o.name).join(', ')}. Round ${state.game.round} starts.`);
+  log(`Match found. Round ${state.game.round} starts.`);
 }
 
 function renderGame() {
   const game = state.game;
   if (!game) return;
 
-  $('match-header').textContent = `Match: ${game.match.title} · Your Rating: ${game.match.playerRating} · Opponents: ${game.match.opponents.map((o) => `${o.name} (${o.rating})`).join(', ')}`;
+  $('match-header').textContent = `Match: ${game.match.title} · Your Rating: ${game.match.playerRating} · Opponents: ${game.match.opponents.map((o) => o.name).join(', ')}`;
 
   // Opponents
   const oppEl = $('opponents');

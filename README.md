@@ -1,6 +1,6 @@
 # Yaniv
 
-A Yaniv web app that simulates ranked matches against believable opponents and keeps local stats.
+A Yaniv web app with ranked matches and local stats.
 
 ## Run locally
 
