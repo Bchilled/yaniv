@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Yaniv</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">Y</div>
+        <div>
+          <div class="title">Yaniv</div>
+          <div class="subtitle">Offline Card Game</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="btn-new" class="ghost">New Game</button>
+        <button id="btn-settings" class="ghost">Settings</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel" id="screen-home">
+        <h1>Play Yaniv</h1>
+        <p class="muted">Play against friendly AI opponents. Offline only, no sign-in.</p>
+        <div class="home-actions">
+          <button id="btn-start" class="primary">Start Game</button>
+          <button id="btn-how" class="secondary">How To Play</button>
+        </div>
+        <div class="stats" id="global-stats"></div>
+      </section>
+
+      <section class="panel hidden" id="screen-settings">
+        <h2>Game Variants</h2>
+        <div class="grid">
+          <label>
+            Players
+            <select id="opt-players">
+              <option value="2">2 (You + 1 AI)</option>
+              <option value="3" selected>3 (You + 2 AI)</option>
+              <option value="4">4 (You + 3 AI)</option>
+              <option value="5">5 (You + 4 AI)</option>
+            </select>
+          </label>
+          <label>
+            Yaniv Limit
+            <select id="opt-yaniv">
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7" selected>7</option>
+            </select>
+          </label>
+          <label>
+            Hand Size
+            <select id="opt-hand">
+              <option value="5" selected>5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </label>
+          <label>
+            Discards
+            <select id="opt-discards">
+              <option value="set" selected>Same rank sets only</option>
+              <option value="set-run">Sets + same-suit runs</option>
+            </select>
+          </label>
+          <label>
+            Jokers
+            <select id="opt-jokers">
+              <option value="off">Off</option>
+              <option value="on" selected>On (0 points)</option>
+              <option value="on-run">On + can be used in runs</option>
+            </select>
+          </label>
+          <label>
+            Assaf Penalty
+            <select id="opt-assaf">
+              <option value="20">20</option>
+              <option value="30" selected>30</option>
+              <option value="40">40</option>
+            </select>
+          </label>
+          <label>
+            Game End
+            <select id="opt-end">
+              <option value="elim" selected>Eliminate at 200</option>
+              <option value="match">End match at 200</option>
+            </select>
+          </label>
+          <label>
+            Score Reset
+            <select id="opt-reset">
+              <option value="off" selected>Off</option>
+              <option value="on">Exact 100/200 reset</option>
+            </select>
+          </label>
+          <label>
+            Opponent Strength
+            <input id="opt-ai" type="range" min="1" max="10" value="6" />
+          </label>
+          <label>
+            Fake Opponent Records
+            <select id="opt-fake">
+              <option value="on" selected>On</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+        </div>
+        <div class="home-actions">
+          <button id="btn-save" class="primary">Save</button>
+          <button id="btn-cancel" class="secondary">Cancel</button>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="screen-game">
+        <div class="board">
+          <div class="opponents" id="opponents"></div>
+          <div class="center">
+            <div class="pile">
+              <div class="pile-label">Discard</div>
+              <div id="discard-top" class="card back"></div>
+              <div id="discard-stack" class="stack"></div>
+            </div>
+            <div class="pile">
+              <div class="pile-label">Draw</div>
+              <div id="draw-pile" class="card back"></div>
+              <div id="draw-count" class="count"></div>
+            </div>
+          </div>
+          <div class="hand" id="player-hand"></div>
+        </div>
+        <div class="actions">
+          <button id="btn-discard" class="primary">Discard Selected</button>
+          <button id="btn-draw" class="secondary">Draw</button>
+          <button id="btn-take" class="secondary">Take Discard</button>
+          <button id="btn-yaniv" class="danger">Call Yaniv</button>
+          <button id="btn-next" class="ghost hidden">Next Round</button>
+        </div>
+        <div id="log" class="log"></div>
+      </section>
+
+      <section class="panel hidden" id="screen-how">
+        <h2>How To Play</h2>
+        <p>On your turn, discard one or more allowed cards, then draw one card. If your hand total is at or below the Yaniv limit, you can call Yaniv to end the round.</p>
+        <p>If someone matches or beats your total, you get an Assaf penalty. Scores add up across rounds. You can pick your favorite rules in Settings.</p>
+        <button id="btn-back" class="secondary">Back</button>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
