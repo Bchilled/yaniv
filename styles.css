@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #e0f2fe;
   --panel: #ffffff;
   --accent: #00b4d8;
@@ -6,7 +6,7 @@
   --danger: #ef233c;
   --text: #0b1020;
   --muted: #475569;
-  --card: #f8fafc;
+  --card: #ffffff;
   --border: #cbd5e1;
 }
 
@@ -37,11 +37,11 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #fb8500);
+  background: linear-gradient(135deg, var(--accent), #0096c7);
   display: grid;
   place-items: center;
   font-weight: 700;
-  color: #111827;
+  color: #003049;
 }
 .title { font-size: 20px; font-weight: 700; }
 .subtitle { font-size: 12px; color: var(--muted); }
@@ -63,8 +63,6 @@ body {
 h1, h2 { margin: 0 0 10px; }
 
 .muted { color: var(--muted); }
-
-.home-actions { display: flex; gap: 10px; margin: 16px 0; }
 
 .home .hero {
   display: flex;
@@ -89,6 +87,8 @@ h1, h2 { margin: 0 0 10px; }
   gap: 12px;
   margin-bottom: 12px;
 }
+
+.home-actions { display: flex; gap: 10px; margin: 16px 0; }
 
 button {
   border: none;
@@ -121,7 +121,7 @@ label {
   color: var(--muted);
 }
 
-select, input[type="range"] {
+select, input[type="range"], input[type="text"] {
   background: #f1f5f9;
   color: var(--text);
   border: 1px solid var(--border);
@@ -142,6 +142,7 @@ select, input[type="range"] {
   background: #f8fafc;
   border-radius: 12px;
   border: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .center {
@@ -155,18 +156,36 @@ select, input[type="range"] {
 .pile-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 
 .card {
-  width: 64px;
-  height: 90px;
+  width: 68px;
+  height: 96px;
   border-radius: 10px;
   background: var(--card);
   border: 1px solid var(--border);
   display: grid;
   place-items: center;
   font-weight: 700;
+  position: relative;
+  overflow: hidden;
 }
+
+.card .card-rank {
+  position: absolute;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.card .card-rank.top { top: 6px; left: 6px; }
+.card .card-rank.bottom { bottom: 6px; right: 6px; transform: rotate(180deg); }
+
+.card .card-suit {
+  font-size: 26px;
+}
+
+.card.red { color: #c1121f; }
 
 .card.back {
   background: linear-gradient(135deg, #00b4d8, #48cae4);
+  border-color: #0ea5e9;
 }
 
 .stack {
@@ -182,8 +201,8 @@ select, input[type="range"] {
 .hand { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
 .hand .card {
-  width: 70px;
-  height: 96px;
+  width: 76px;
+  height: 104px;
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -221,31 +240,6 @@ select, input[type="range"] {
   margin: 12px 0;
 }
 
-.tabs {
-  display: inline-flex;
-  gap: 6px;
-  background: #e2e8f0;
-  padding: 6px;
-  border-radius: 999px;
-  margin-bottom: 12px;
-}
-
-.tab {
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.tab.active {
-  background: #fff;
-  color: #003049;
-  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.15);
-}
-
 .ranking-row {
   display: grid;
   grid-template-columns: 48px 1fr 80px 90px;
@@ -272,6 +266,71 @@ select, input[type="range"] {
   text-align: right;
   color: var(--muted);
 }
+
+.tabs {
+  display: inline-flex;
+  gap: 6px;
+  background: #e2e8f0;
+  padding: 6px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.tab.active {
+  background: #fff;
+  color: #003049;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.15);
+}
+
+.rooms {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.room {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.room-title { font-weight: 700; }
+.room-meta { font-size: 12px; color: var(--muted); }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  width: min(420px, 90vw);
+  box-shadow: 0 20px 40px rgba(2, 132, 199, 0.25);
+}
+
+.modal-title { font-weight: 700; margin-bottom: 8px; }
 
 @media (max-width: 720px) {
   .topbar { flex-direction: column; align-items: flex-start; }

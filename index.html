@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -14,8 +14,8 @@
       <div class="brand">
         <div class="logo">Y</div>
         <div>
-        <div class="title">Yaniv</div>
-        <div class="subtitle">Fast Paced Addictive Card Game</div>
+          <div class="title">Yaniv</div>
+          <div class="subtitle">Fast Paced Addictive Card Game</div>
         </div>
       </div>
       <div class="top-actions">
@@ -29,23 +29,35 @@
         <div class="hero">
           <div>
             <h1>Play Yaniv</h1>
-            <p class="muted">Quick matches. Climb the leaderboards. One hand at a time.</p>
+            <p class="muted">Discard, draw, and call Yaniv at 7 or less to win the round.</p>
           </div>
           <div class="profile" id="profile-card"></div>
         </div>
         <div class="menu">
-          <button id="btn-start" class="primary big">Play Random Match</button>
-          <button id="btn-rankings" class="secondary big">Leaderboards</button>
-          <button id="btn-how" class="ghost big">Tutorial</button>
+          <button id="btn-ranked" class="primary big">Play Ranked Match</button>
+          <button id="btn-quick" class="secondary big">Play Quick Match</button>
+          <button id="btn-rankings" class="ghost big">Leaderboards</button>
+          <button id="btn-how" class="ghost big">How To Play</button>
           <button id="btn-settings-home" class="ghost big">Settings</button>
           <button id="btn-install" class="ghost big hidden">Install App</button>
         </div>
         <div class="stats" id="global-stats"></div>
       </section>
 
+      <section class="panel hidden" id="screen-rooms">
+        <h2>Ranked Rooms</h2>
+        <p class="muted">Choose a room to join. Stronger rooms have higher rated opponents.</p>
+        <div id="room-list" class="rooms"></div>
+        <button id="btn-rooms-back" class="secondary">Back</button>
+      </section>
+
       <section class="panel hidden" id="screen-settings">
         <h2>Game Variants</h2>
         <div class="grid">
+          <label>
+            Player Name
+            <input id="opt-name" type="text" placeholder="Player" />
+          </label>
           <label>
             Players
             <select id="opt-players">
@@ -157,12 +169,12 @@
       <section class="panel hidden" id="screen-how">
         <h2>How To Play</h2>
         <p>On your turn, discard one or more allowed cards, then draw one card. If your hand total is at or below the Yaniv limit, you can call Yaniv to end the round.</p>
-        <p>If someone matches or beats your total, you get an Assaf penalty. Scores add up across rounds. You can pick your favorite rules in Settings.</p>
+        <p>If someone matches or beats your total, you get an Assaf penalty. Scores add up across rounds.</p>
         <button id="btn-back" class="secondary">Back</button>
       </section>
 
       <section class="panel hidden" id="screen-rankings">
-        <h2>Rankings</h2>
+        <h2>Leaderboards</h2>
         <div class="tabs">
           <button id="tab-today" class="tab active">Today</button>
           <button id="tab-all" class="tab">All-Time</button>
@@ -173,11 +185,19 @@
 
       <section class="panel hidden" id="screen-install">
         <h2>Install</h2>
-        <p class="muted">iPhone: Open this page in Safari, tap Share, then "Add to Home Screen".</p>
-        <p class="muted">Android: Open in Chrome, tap the menu (⋮), then "Add to Home screen".</p>
+        <p class="muted">Android: Open in Chrome, tap the menu (⋮), then "Install app".</p>
+        <p class="muted">If that is missing, refresh and try again.</p>
         <button id="btn-install-back" class="secondary">Back</button>
       </section>
     </main>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div id="modal-title" class="modal-title"></div>
+      <div id="modal-body" class="modal-body"></div>
+      <button id="modal-close" class="secondary">Close</button>
+    </div>
   </div>
 
   <script src="app.js"></script>
