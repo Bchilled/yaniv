@@ -61,4 +61,18 @@
   "stake_elite": "Elit",
   "btn_join": "Katıl",
   "label_stakes": "Bahisler"
+  ,
+  "label_difficulty": "Difficulty",
+  "diff_easy": "Easy",
+  "diff_normal": "Normal",
+  "diff_hard": "Hard",
+  "diff_expert": "Expert",
+  "diff_insane": "Insane",
+  "label_emoji": "Emoji",
+  "msg_connecting": "Connecting to match...",
+  "msg_disconnect_win": "Opponent disconnected. You win!",
+  "msg_you_sent": "You sent",
+  "msg_opp_sent": "Opponent sent"
+  ,
+  "msg_too_high": "Your total is {total}. You can call Yaniv at {limit} or less."
 }

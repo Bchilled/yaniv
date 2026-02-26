@@ -18,6 +18,7 @@ const NAMES = buildNames();
 const DEFAULT_SETTINGS = {
   playerName: 'Player',
   language: 'en',
+  difficulty: 'normal',
   players: 3,
   yanivLimit: 7,
   handSize: 5,
@@ -81,6 +82,14 @@ function t(key) {
   return i18n[key] || key;
 }
 
+function tFmt(key, vars) {
+  let s = t(key);
+  Object.keys(vars).forEach((k) => {
+    s = s.replaceAll(`{${k}}`, String(vars[k]));
+  });
+  return s;
+}
+
 function applyTranslations() {
   document.documentElement.lang = state.lang;
   document.documentElement.dir = (state.lang === 'he' || state.lang === 'ar') ? 'rtl' : 'ltr';
@@ -127,8 +136,17 @@ function ratingFromStats(stats) {
   return clamp(rating, 600, 2600);
 }
 
+function difficultyStrength() {
+  const d = state.settings.difficulty || 'normal';
+  if (d === 'easy') return 3;
+  if (d === 'hard') return 7;
+  if (d === 'expert') return 9;
+  if (d === 'insane') return 10;
+  return 5;
+}
+
 function showScreen(id) {
-  ['screen-home', 'screen-settings', 'screen-game', 'screen-how', 'screen-rankings', 'screen-install', 'screen-rooms'].forEach((sid) => {
+  ['screen-home', 'screen-settings', 'screen-game', 'screen-how', 'screen-rankings', 'screen-install'].forEach((sid) => {
     $(sid).classList.toggle('hidden', sid !== id);
   });
 }
@@ -156,6 +174,7 @@ function renderProfile(stats, rating) {
 function applySettingsToUI() {
   $('opt-name').value = state.settings.playerName;
   $('opt-lang').value = state.lang;
+  $('opt-difficulty').value = state.settings.difficulty || 'normal';
   $('opt-players').value = String(state.settings.players);
   $('opt-yaniv').value = String(state.settings.yanivLimit);
   $('opt-hand').value = String(state.settings.handSize);
@@ -172,6 +191,7 @@ function readSettingsFromUI() {
   state.settings = {
     playerName: $('opt-name').value.trim() || 'Player',
     language: $('opt-lang').value,
+    difficulty: $('opt-difficulty').value,
     players: Number($('opt-players').value),
     yanivLimit: Number($('opt-yaniv').value),
     handSize: Number($('opt-hand').value),
@@ -332,6 +352,31 @@ function startGame(mode, room) {
   log(`Match found. Round ${state.game.round} starts.`);
 }
 
+function showOverlay(text) {
+  $('overlay-text').textContent = text;
+  $('overlay').classList.remove('hidden');
+}
+
+function hideOverlay() {
+  $('overlay').classList.add('hidden');
+}
+
+function maybeDisconnectWin() {
+  if (state.mode !== 'quick') return false;
+  const chance = Math.random();
+  if (chance < 0.01) {
+    const stats = loadStats();
+    stats.games += 1;
+    stats.wins += 1;
+    saveStats(stats);
+    renderGlobalStats();
+    alert(t('msg_disconnect_win'));
+    showScreen('screen-home');
+    return true;
+  }
+  return false;
+}
+
 function renderGame() {
   const game = state.game;
   if (!game) return;
@@ -451,6 +496,7 @@ function endTurn() {
 function aiTurn() {
   const game = state.game;
   const ai = game.players[game.turn];
+  if (maybeDisconnectWin()) return;
   const total = handTotal(ai.hand);
   const willCall = total <= state.settings.yanivLimit && Math.random() < aiCallChance();
   if (willCall) {
@@ -480,7 +526,8 @@ function aiTurn() {
 }
 
 function aiCallChance() {
-  return 0.18 + state.settings.aiStrength * 0.065;
+  const strength = difficultyStrength();
+  return 0.12 + strength * 0.08;
 }
 
 function aiChooseDiscard(hand) {
@@ -548,7 +595,7 @@ function handTotal(hand) {
 function callYaniv() {
   const total = handTotal(state.game.players[0].hand);
   if (total > state.settings.yanivLimit) {
-    return log(`Your total is ${total}. You can call Yaniv at ${state.settings.yanivLimit} or less.`);
+    return log(tFmt('msg_too_high', { total, limit: state.settings.yanivLimit }));
   }
   playSound('yaniv');
   log('You call Yaniv.');
@@ -673,51 +720,17 @@ function renderRankings(mode = 'today') {
 
   const topRow = document.createElement('div');
   topRow.className = 'ranking-row';
-  topRow.innerHTML = `<div class="rank">#1</div><div>${top.name}</div><div class="rating">${top.rating}</div><div class="record">${top.record.wins}-${top.record.losses}</div>`;
+  topRow.innerHTML = `<div class="rank">#1</div><div>${top.name}</div><div class="rating">${top.rating}</div>`;
   list.appendChild(topRow);
 
   const yourRow = document.createElement('div');
   const yourRank = sorted.findIndex((p) => p.rating <= rating) + 1 || sorted.length + 1;
   yourRow.className = 'ranking-row';
-  yourRow.innerHTML = `<div class="rank">#${yourRank}</div><div>${state.settings.playerName} (You)</div><div class="rating">${rating}</div><div class="record">${stats.wins}-${stats.losses}</div>`;
+  yourRow.innerHTML = `<div class="rank">#${yourRank}</div><div>${state.settings.playerName} (You)</div><div class="rating">${rating}</div>`;
   list.appendChild(yourRow);
 
   $('tab-today').classList.toggle('active', mode === 'today');
   $('tab-all').classList.toggle('active', mode === 'all');
-}
-
-function renderRooms() {
-  const rating = ratingFromStats(loadStats());
-  const rooms = [
-    { title: t('room_bronze'), min: 600, max: 1200, stake: t('stake_low') },
-    { title: t('room_silver'), min: 1000, max: 1600, stake: t('stake_med') },
-    { title: t('room_gold'), min: 1400, max: 2000, stake: t('stake_high') },
-    { title: t('room_platinum'), min: 1800, max: 2400, stake: t('stake_elite') },
-  ];
-
-  const list = $('room-list');
-  list.innerHTML = '';
-  rooms.forEach((room) => {
-    const div = document.createElement('div');
-    div.className = 'room';
-    div.innerHTML = `
-      <div>
-        <div class="room-title">${room.title}</div>
-        <div class="room-meta">${t('label_rating')} ${room.min}-${room.max} · ${room.stake} ${t('label_stakes')}</div>
-      </div>
-      <button class="primary">${t('btn_join')}</button>
-    `;
-    div.querySelector('button').addEventListener('click', () => {
-      startGame('ranked', room);
-      showScreen('screen-game');
-    });
-    list.appendChild(div);
-  });
-
-  $('room-list').querySelectorAll('.room').forEach((el) => {
-    const title = el.querySelector('.room-title').textContent;
-    if (rating < 1200 && title.includes('Platinum')) el.style.opacity = '0.6';
-  });
 }
 
 function showProfile(name, record, rating) {
@@ -761,20 +774,33 @@ function log(msg) {
 }
 
 // Event wiring
-$('btn-ranked').addEventListener('click', () => {
-  renderRooms();
-  showScreen('screen-rooms');
-});
 $('btn-quick').addEventListener('click', () => {
-  startGame('quick', null);
-  showScreen('screen-game');
+  showOverlay(t('msg_connecting'));
+  const delay = 900 + Math.floor(Math.random() * 1600);
+  setTimeout(() => {
+    if (maybeDisconnectWin()) {
+      hideOverlay();
+      return;
+    }
+    startGame('quick', null);
+    hideOverlay();
+    showScreen('screen-game');
+  }, delay);
 });
 $('btn-new').addEventListener('click', () => {
   if (state.game && !confirm('Start a new game? Current game will be lost.')) return;
-  startGame('quick', null);
-  showScreen('screen-game');
+  showOverlay(t('msg_connecting'));
+  const delay = 900 + Math.floor(Math.random() * 1600);
+  setTimeout(() => {
+    if (maybeDisconnectWin()) {
+      hideOverlay();
+      return;
+    }
+    startGame('quick', null);
+    hideOverlay();
+    showScreen('screen-game');
+  }, delay);
 });
-$('btn-rooms-back').addEventListener('click', () => showScreen('screen-home'));
 $('btn-settings').addEventListener('click', () => {
   applySettingsToUI();
   showScreen('screen-settings');
@@ -817,6 +843,18 @@ $('btn-next').addEventListener('click', () => {
 $('modal-close').addEventListener('click', hideModal);
 $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') hideModal(); });
 
+document.querySelectorAll('#emoji-bar .emoji').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const emoji = btn.getAttribute('data-emoji');
+    log(`${t('msg_you_sent')} ${emoji}`);
+    setTimeout(() => {
+      const replies = ['⏳','😊','👋','😁','😠','😢','🏆'];
+      const pick = replies[Math.floor(Math.random() * replies.length)];
+      log(`${t('msg_opp_sent')} ${pick}`);
+    }, 600 + Math.random() * 800);
+  });
+});
+
 // Initialize
 loadSettings();
 buildLanguageOptions();
@@ -824,6 +862,7 @@ buildLanguageOptions();
   await loadLanguage(state.lang);
   applyTranslations();
   renderGlobalStats();
+  hideModal();
   showScreen(state.firstRun ? 'screen-settings' : 'screen-home');
 })();
 

@@ -1,11 +1,22 @@
-const CACHE = 'yaniv-v1';
+const CACHE = 'yaniv-v2';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './i18n/en.json',
+  './i18n/he.json',
+  './i18n/es.json',
+  './i18n/fr.json',
+  './i18n/de.json',
+  './i18n/pt.json',
+  './i18n/ru.json',
+  './i18n/ar.json',
+  './i18n/hi.json',
+  './i18n/tr.json',
+  './i18n/ne.json'
 ];
 
 self.addEventListener('install', (evt) => {

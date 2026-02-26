@@ -34,21 +34,13 @@
           <div class="profile" id="profile-card"></div>
         </div>
         <div class="menu">
-          <button id="btn-ranked" class="primary big" data-i18n="btn_ranked">Play Ranked Match</button>
-          <button id="btn-quick" class="secondary big" data-i18n="btn_quick">Play Quick Match</button>
+          <button id="btn-quick" class="primary big" data-i18n="btn_quick">Play Quick Match</button>
           <button id="btn-rankings" class="ghost big" data-i18n="btn_leaderboards">Leaderboards</button>
           <button id="btn-how" class="ghost big" data-i18n="btn_how">How To Play</button>
           <button id="btn-settings-home" class="ghost big" data-i18n="btn_settings">Settings</button>
           <button id="btn-install" class="ghost big hidden" data-i18n="btn_install">Install App</button>
         </div>
         <div class="stats" id="global-stats"></div>
-      </section>
-
-      <section class="panel hidden" id="screen-rooms">
-        <h2 data-i18n="rooms_title">Ranked Rooms</h2>
-        <p class="muted" data-i18n="rooms_desc">Choose a room to join. Stronger rooms have higher rated opponents.</p>
-        <div id="room-list" class="rooms"></div>
-        <button id="btn-rooms-back" class="secondary" data-i18n="btn_back">Back</button>
       </section>
 
       <section class="panel hidden" id="screen-settings">
@@ -61,6 +53,16 @@
           <label>
             <span data-i18n="label_language">Language</span>
             <select id="opt-lang"></select>
+          </label>
+          <label>
+            <span data-i18n="label_difficulty">Difficulty</span>
+            <select id="opt-difficulty">
+              <option value="easy" data-i18n="diff_easy">Easy</option>
+              <option value="normal" data-i18n="diff_normal" selected>Normal</option>
+              <option value="hard" data-i18n="diff_hard">Hard</option>
+              <option value="expert" data-i18n="diff_expert">Expert</option>
+              <option value="insane" data-i18n="diff_insane">Insane</option>
+            </select>
           </label>
           <label>
             <span data-i18n="label_players">Players</span>
@@ -167,6 +169,16 @@
           <button id="btn-yaniv" class="danger" data-i18n="btn_yaniv">Call Yaniv</button>
           <button id="btn-next" class="ghost hidden" data-i18n="btn_next">Next Round</button>
         </div>
+        <div class="emoji-bar" id="emoji-bar">
+          <span class="emoji-label" data-i18n="label_emoji">Emoji</span>
+          <button class="emoji" data-emoji="⏳">⏳</button>
+          <button class="emoji" data-emoji="😊">😊</button>
+          <button class="emoji" data-emoji="👋">👋</button>
+          <button class="emoji" data-emoji="😁">😁</button>
+          <button class="emoji" data-emoji="😠">😠</button>
+          <button class="emoji" data-emoji="😢">😢</button>
+          <button class="emoji" data-emoji="🏆">🏆</button>
+        </div>
         <div id="log" class="log"></div>
       </section>
 
@@ -201,6 +213,13 @@
       <div id="modal-title" class="modal-title"></div>
       <div id="modal-body" class="modal-body"></div>
       <button id="modal-close" class="secondary" data-i18n="btn_close">Close</button>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="spinner"></div>
+      <div id="overlay-text"></div>
     </div>
   </div>
 

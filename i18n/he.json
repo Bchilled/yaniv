@@ -61,4 +61,18 @@
   "stake_elite": "עילית",
   "btn_join": "הצטרף",
   "label_stakes": "הימורים"
+  ,
+  "label_difficulty": "רמת קושי",
+  "diff_easy": "קל",
+  "diff_normal": "רגיל",
+  "diff_hard": "קשה",
+  "diff_expert": "מומחה",
+  "diff_insane": "משוגע",
+  "label_emoji": "אימוג׳י",
+  "msg_connecting": "מתחבר למשחק...",
+  "msg_disconnect_win": "היריב התנתק. ניצחת!",
+  "msg_you_sent": "שלחת",
+  "msg_opp_sent": "היריב שלח"
+  ,
+  "msg_too_high": "הסכום שלך הוא {total}. אפשר לקרוא יניב רק ב-{limit} או פחות."
 }
