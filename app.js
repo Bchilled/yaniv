@@ -7,6 +7,8 @@ const state = {
   phase: 'idle',
   selected: new Set(),
   mode: 'quick',
+  lang: 'en',
+  firstRun: false,
 };
 
 let installPrompt = null;
@@ -15,6 +17,7 @@ const NAMES = buildNames();
 
 const DEFAULT_SETTINGS = {
   playerName: 'Player',
+  language: 'en',
   players: 3,
   yanivLimit: 7,
   handSize: 5,
@@ -26,6 +29,23 @@ const DEFAULT_SETTINGS = {
   aiStrength: 6,
   fakeRecords: 'on',
 };
+
+const LANGUAGE_LIST = [
+  { code: 'en', label: 'English' },
+  { code: 'he', label: 'עברית' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'hi', label: 'हिन्दी' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'ne', label: 'नेपाली' },
+];
+
+const i18nCache = new Map();
+let i18n = {};
 
 function buildNames() {
   const first = ['Ari','Lior','Noa','Tal','Yael','Maya','Eli','Nina','Oren','Rina','Ziv','Adi','Shai','Rafi','Dana','Lana','Ilan','Gali','Hila','Yoni','Erez','Liat','Noy','Gav','Roi','Omer','Shir','Neri','Bar','Rotem','Ido','Sivan','Ofir','Hadar','Nave','Yair','Elin','Hod','Dvir','Tali'];
@@ -40,13 +60,56 @@ function buildNames() {
   return names;
 }
 
+async function loadLanguage(lang) {
+  if (i18nCache.has(lang)) {
+    i18n = i18nCache.get(lang);
+    return;
+  }
+  try {
+    const res = await fetch(`i18n/${lang}.json`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('load failed');
+    const data = await res.json();
+    i18nCache.set(lang, data);
+    i18n = data;
+  } catch {
+    if (lang !== 'en') return loadLanguage('en');
+    i18n = {};
+  }
+}
+
+function t(key) {
+  return i18n[key] || key;
+}
+
+function applyTranslations() {
+  document.documentElement.lang = state.lang;
+  document.documentElement.dir = (state.lang === 'he' || state.lang === 'ar') ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+}
+
+function buildLanguageOptions() {
+  const sel = $('opt-lang');
+  sel.innerHTML = '';
+  LANGUAGE_LIST.forEach((l) => {
+    const opt = document.createElement('option');
+    opt.value = l.code;
+    opt.textContent = l.label;
+    sel.appendChild(opt);
+  });
+}
+
 function saveSettings() {
   localStorage.setItem('yaniv.settings', JSON.stringify(state.settings));
 }
 
 function loadSettings() {
   const raw = localStorage.getItem('yaniv.settings');
+  state.firstRun = !raw;
   state.settings = raw ? JSON.parse(raw) : { ...DEFAULT_SETTINGS };
+  state.lang = state.settings.language || 'en';
 }
 
 function saveStats(stats) {
@@ -73,7 +136,7 @@ function showScreen(id) {
 function renderGlobalStats() {
   const stats = loadStats();
   const rating = ratingFromStats(stats);
-  $('global-stats').textContent = `Games: ${stats.games} · Wins: ${stats.wins} · Losses: ${stats.losses} · Rating: ${rating}`;
+  $('global-stats').textContent = `${t('label_games')}: ${stats.games} · ${t('label_wins')}: ${stats.wins} · ${t('label_losses')}: ${stats.losses} · ${t('label_rating')}: ${rating}`;
   renderProfile(stats, rating);
 }
 
@@ -84,14 +147,15 @@ function renderProfile(stats, rating) {
   const winRate = games ? Math.round((stats.wins / games) * 100) : 0;
   card.innerHTML = `
     <div style="font-weight:700; margin-bottom:6px;">${state.settings.playerName}</div>
-    <div>Rating: <strong>${rating}</strong></div>
-    <div>Record: ${stats.wins}-${stats.losses}</div>
-    <div>Win Rate: ${winRate}%</div>
+    <div>${t('label_rating')}: <strong>${rating}</strong></div>
+    <div>${t('label_record')}: ${stats.wins}-${stats.losses}</div>
+    <div>${t('label_winrate')}: ${winRate}%</div>
   `;
 }
 
 function applySettingsToUI() {
   $('opt-name').value = state.settings.playerName;
+  $('opt-lang').value = state.lang;
   $('opt-players').value = String(state.settings.players);
   $('opt-yaniv').value = String(state.settings.yanivLimit);
   $('opt-hand').value = String(state.settings.handSize);
@@ -107,6 +171,7 @@ function applySettingsToUI() {
 function readSettingsFromUI() {
   state.settings = {
     playerName: $('opt-name').value.trim() || 'Player',
+    language: $('opt-lang').value,
     players: Number($('opt-players').value),
     yanivLimit: Number($('opt-yaniv').value),
     handSize: Number($('opt-hand').value),
@@ -118,6 +183,7 @@ function readSettingsFromUI() {
     aiStrength: Number($('opt-ai').value),
     fakeRecords: $('opt-fake').value,
   };
+  state.lang = state.settings.language || 'en';
 }
 
 function makeDeck() {
@@ -623,10 +689,10 @@ function renderRankings(mode = 'today') {
 function renderRooms() {
   const rating = ratingFromStats(loadStats());
   const rooms = [
-    { title: 'Bronze Room', min: 600, max: 1200, stake: 'Low' },
-    { title: 'Silver Room', min: 1000, max: 1600, stake: 'Medium' },
-    { title: 'Gold Room', min: 1400, max: 2000, stake: 'High' },
-    { title: 'Platinum Room', min: 1800, max: 2400, stake: 'Elite' },
+    { title: t('room_bronze'), min: 600, max: 1200, stake: t('stake_low') },
+    { title: t('room_silver'), min: 1000, max: 1600, stake: t('stake_med') },
+    { title: t('room_gold'), min: 1400, max: 2000, stake: t('stake_high') },
+    { title: t('room_platinum'), min: 1800, max: 2400, stake: t('stake_elite') },
   ];
 
   const list = $('room-list');
@@ -637,9 +703,9 @@ function renderRooms() {
     div.innerHTML = `
       <div>
         <div class="room-title">${room.title}</div>
-        <div class="room-meta">Rating ${room.min}-${room.max} · ${room.stake} Stakes</div>
+        <div class="room-meta">${t('label_rating')} ${room.min}-${room.max} · ${room.stake} ${t('label_stakes')}</div>
       </div>
-      <button class="primary">Join</button>
+      <button class="primary">${t('btn_join')}</button>
     `;
     div.querySelector('button').addEventListener('click', () => {
       startGame('ranked', room);
@@ -657,8 +723,8 @@ function renderRooms() {
 function showProfile(name, record, rating) {
   $('modal-title').textContent = name;
   $('modal-body').innerHTML = `
-    <div>Rating: <strong>${rating || '-'}</strong></div>
-    <div>Record: ${record ? `${record.wins}-${record.losses}` : '-'}</div>
+    <div>${t('label_rating')}: <strong>${rating || '-'}</strong></div>
+    <div>${t('label_record')}: ${record ? `${record.wins}-${record.losses}` : '-'}</div>
   `;
   $('modal').classList.remove('hidden');
 }
@@ -730,8 +796,11 @@ $('tab-all').addEventListener('click', () => renderRankings('all'));
 $('btn-save').addEventListener('click', () => {
   readSettingsFromUI();
   saveSettings();
-  renderGlobalStats();
-  showScreen('screen-home');
+  loadLanguage(state.lang).then(() => {
+    applyTranslations();
+    renderGlobalStats();
+    showScreen('screen-home');
+  });
 });
 $('btn-cancel').addEventListener('click', () => showScreen('screen-home'));
 
@@ -750,8 +819,13 @@ $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') hideM
 
 // Initialize
 loadSettings();
-renderGlobalStats();
-showScreen('screen-home');
+buildLanguageOptions();
+(async () => {
+  await loadLanguage(state.lang);
+  applyTranslations();
+  renderGlobalStats();
+  showScreen(state.firstRun ? 'screen-settings' : 'screen-home');
+})();
 
 // Install prompt (Android Chrome)
 window.addEventListener('beforeinstallprompt', (e) => {

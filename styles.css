@@ -58,7 +58,7 @@ body {
   box-shadow: 0 16px 30px rgba(2, 132, 199, 0.18);
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 h1, h2 { margin: 0 0 10px; }
 
@@ -166,6 +166,7 @@ select, input[type="range"], input[type="text"] {
   font-weight: 700;
   position: relative;
   overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgba(2, 132, 199, 0.08);
 }
 
 .card .card-rank {
@@ -253,8 +254,7 @@ select, input[type="range"], input[type="text"] {
 }
 
 .ranking-row .rank {
-  color: var(--muted);
-}
+  color: var(--muted); }
 
 .ranking-row .rating {
   text-align: right;
@@ -336,4 +336,12 @@ select, input[type="range"], input[type="text"] {
   .topbar { flex-direction: column; align-items: flex-start; }
   .center { flex-direction: column; }
   .home .hero { flex-direction: column; align-items: flex-start; }
+}
+
+[dir="rtl"] .profile,
+[dir="rtl"] .panel,
+[dir="rtl"] .opponent,
+[dir="rtl"] .ranking-row,
+[dir="rtl"] .room {
+  text-align: right;
 }
