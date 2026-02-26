@@ -172,6 +172,49 @@ select, input[type="range"] {
 
 .stats { margin-top: 12px; font-size: 14px; color: var(--muted); }
 
+.match-header {
+  background: #0b1324;
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.rankings {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.ranking-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 80px 90px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #0b1324;
+  border-radius: 10px;
+  border: 1px solid rgba(148,163,184,0.2);
+  font-size: 14px;
+}
+
+.ranking-row .rank {
+  color: var(--muted);
+}
+
+.ranking-row .rating {
+  text-align: right;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ranking-row .record {
+  text-align: right;
+  color: var(--muted);
+}
+
 @media (max-width: 720px) {
   .topbar { flex-direction: column; align-items: flex-start; }
   .center { flex-direction: column; }

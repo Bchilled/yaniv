@@ -1,6 +1,6 @@
-# Yaniv (Offline)
+# Yaniv
 
-A simple offline Yaniv card game built as a web app (PWA). It runs fully offline and can be added to the iPhone home screen.
+A Yaniv web app that simulates ranked matches against believable opponents and keeps local stats.
 
 ## Run locally
 
@@ -8,9 +8,9 @@ Open `index.html` in a browser.
 
 ## Install on iPhone
 
-1. Host the folder on any HTTPS site (GitHub Pages works).
-2. Open the link in Safari.
-3. Tap Share → Add to Home Screen.
+1. Open the site in Safari.
+2. Tap Share.
+3. Tap Add to Home Screen.
 
 ## Live Link
 

@@ -1,4 +1,4 @@
-/* Yaniv offline web app */
+﻿/* Yaniv ranked match simulator */
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -44,15 +44,32 @@ function loadStats() {
   return raw ? JSON.parse(raw) : { wins: 0, losses: 0, games: 0 };
 }
 
+function loadRating() {
+  const raw = localStorage.getItem('yaniv.rating');
+  return raw ? Number(raw) : 1400;
+}
+
+function saveRating(rating) {
+  localStorage.setItem('yaniv.rating', String(rating));
+}
+
+function updatePlayerRating(won) {
+  const current = loadRating();
+  const delta = won ? randBetween(12, 28) : -randBetween(10, 22);
+  const next = clamp(current + delta, 600, 2600);
+  saveRating(next);
+}
+
 function showScreen(id) {
-  ['screen-home', 'screen-settings', 'screen-game', 'screen-how'].forEach((sid) => {
+  ['screen-home', 'screen-settings', 'screen-game', 'screen-how', 'screen-rankings', 'screen-install'].forEach((sid) => {
     $(sid).classList.toggle('hidden', sid !== id);
   });
 }
 
 function renderGlobalStats() {
   const stats = loadStats();
-  $('global-stats').textContent = `Games: ${stats.games} � Wins: ${stats.wins} � Losses: ${stats.losses}`;
+  const rating = loadRating();
+  $('global-stats').textContent = `Games: ${stats.games} · Wins: ${stats.wins} · Losses: ${stats.losses} · Rating: ${rating}`;
 }
 
 function applySettingsToUI() {
@@ -84,7 +101,7 @@ function readSettingsFromUI() {
 }
 
 function makeDeck() {
-  const suits = ['?', '?', '?', '?'];
+  const suits = ['S', 'H', 'D', 'C'];
   const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   const deck = [];
   for (const s of suits) {
@@ -93,8 +110,8 @@ function makeDeck() {
     }
   }
   if (state.settings.jokers !== 'off') {
-    deck.push({ rank: 'Joker', suit: '?', value: 0, id: 'Joker1' });
-    deck.push({ rank: 'Joker', suit: '?', value: 0, id: 'Joker2' });
+    deck.push({ rank: 'Joker', suit: '*', value: 0, id: 'Joker1' });
+    deck.push({ rank: 'Joker', suit: '*', value: 0, id: 'Joker2' });
   }
   return shuffle(deck);
 }
@@ -126,18 +143,33 @@ function deal(game) {
   game.discardPile.push(drawCard(game));
 }
 
-function createPlayers() {
-  const players = [];
-  players.push({ name: 'You', isHuman: true, hand: [], score: 0, record: null });
+function createMatch() {
+  const playerRating = loadRating();
+  const strengthBias = (state.settings.aiStrength - 5) * 40;
+  const opponents = [];
   const used = new Set(['You']);
   for (let i = 1; i < state.settings.players; i++) {
     let name = NAMES[Math.floor(Math.random() * NAMES.length)];
     while (used.has(name)) name = NAMES[Math.floor(Math.random() * NAMES.length)];
     used.add(name);
+    const rating = clamp(Math.round(playerRating + randBetween(-120, 140) + strengthBias), 600, 2600);
     const record = state.settings.fakeRecords === 'on'
-      ? { wins: randBetween(12, 120), losses: randBetween(8, 140) }
+      ? { wins: randBetween(10, 160), losses: randBetween(10, 180) }
       : null;
-    players.push({ name, isHuman: false, hand: [], score: 0, record });
+    opponents.push({ name, rating, record });
+  }
+  return {
+    title: `Queue ${randBetween(1200, 2400)}`,
+    playerRating,
+    opponents,
+  };
+}
+
+function createPlayers(match) {
+  const players = [];
+  players.push({ name: 'You', isHuman: true, hand: [], score: 0, record: null, rating: match.playerRating });
+  for (const opp of match.opponents) {
+    players.push({ name: opp.name, isHuman: false, hand: [], score: 0, record: opp.record, rating: opp.rating });
   }
   return players;
 }
@@ -146,26 +178,34 @@ function randBetween(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
 function startGame() {
+  const match = createMatch();
   state.game = {
-    players: createPlayers(),
+    players: createPlayers(match),
     drawPile: makeDeck(),
     discardPile: [],
     turn: 0,
     round: 1,
     phase: 'discard',
     inRound: true,
+    match,
   };
   deal(state.game);
   state.selected.clear();
   state.phase = 'player';
   renderGame();
-  log(`Round ${state.game.round} starts. Your turn.`);
+  log(`Match found vs ${match.opponents.map((o) => o.name).join(', ')}. Round ${state.game.round} starts.`);
 }
 
 function renderGame() {
   const game = state.game;
   if (!game) return;
+
+  $('match-header').textContent = `Match: ${game.match.title} · Your Rating: ${game.match.playerRating} · Opponents: ${game.match.opponents.map((o) => `${o.name} (${o.rating})`).join(', ')}`;
 
   // Opponents
   const oppEl = $('opponents');
@@ -174,8 +214,9 @@ function renderGame() {
     if (p.isHuman) return;
     const div = document.createElement('div');
     div.className = 'opponent';
-    const record = p.record ? ` � ${p.record.wins}-${p.record.losses}` : '';
-    div.textContent = `${p.name}${record} � Hand: ${p.hand.length} � Score: ${p.score}`;
+    const record = p.record ? ` · ${p.record.wins}-${p.record.losses}` : '';
+    const rating = p.rating ? ` · Rating ${p.rating}` : '';
+    div.textContent = `${p.name}${record}${rating} · Hand: ${p.hand.length} · Score: ${p.score}`;
     if (idx === game.turn && game.phase !== 'round-end') div.style.borderColor = 'var(--accent)';
     oppEl.appendChild(div);
   });
@@ -290,7 +331,7 @@ function aiTurn() {
 }
 
 function aiCallChance() {
-  return 0.2 + state.settings.aiStrength * 0.06; // 0.26 .. 0.8
+  return 0.18 + state.settings.aiStrength * 0.065; // 0.245 .. 0.83
 }
 
 function aiChooseDiscard(hand) {
@@ -429,6 +470,7 @@ function finishMatch(winner) {
   stats.games += 1;
   if (winner.isHuman) stats.wins += 1; else stats.losses += 1;
   saveStats(stats);
+  updatePlayerRating(winner.isHuman);
   renderGlobalStats();
   log(`Game over. Winner: ${winner.name}.`);
   alert(`Game over! Winner: ${winner.name}`);
@@ -472,6 +514,27 @@ function allDiscards(hand) {
   return options;
 }
 
+function renderRankings() {
+  const list = $('rankings-list');
+  list.innerHTML = '';
+  const base = loadRating();
+  const rows = [];
+  for (let i = 1; i <= 20; i++) {
+    const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    const rating = clamp(base + randBetween(-500, 700), 600, 2600);
+    const wins = randBetween(10, 260);
+    const losses = randBetween(10, 260);
+    rows.push({ rank: i, name, rating, wins, losses });
+  }
+  rows.sort((a,b) => b.rating - a.rating).forEach((r, idx) => r.rank = idx + 1);
+  rows.forEach((r) => {
+    const row = document.createElement('div');
+    row.className = 'ranking-row';
+    row.innerHTML = `<div class="rank">#${r.rank}</div><div>${r.name}</div><div class="rating">${r.rating}</div><div class="record">${r.wins}-${r.losses}</div>`;
+    list.appendChild(row);
+  });
+}
+
 function log(msg) {
   const el = $('log');
   const time = new Date().toLocaleTimeString();
@@ -494,6 +557,13 @@ $('btn-settings').addEventListener('click', () => {
 });
 $('btn-how').addEventListener('click', () => showScreen('screen-how'));
 $('btn-back').addEventListener('click', () => showScreen('screen-home'));
+$('btn-rankings').addEventListener('click', () => {
+  renderRankings();
+  showScreen('screen-rankings');
+});
+$('btn-rankings-back').addEventListener('click', () => showScreen('screen-home'));
+$('btn-install').addEventListener('click', () => showScreen('screen-install'));
+$('btn-install-back').addEventListener('click', () => showScreen('screen-home'));
 $('btn-save').addEventListener('click', () => {
   readSettingsFromUI();
   saveSettings();
