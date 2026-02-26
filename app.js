@@ -8,6 +8,8 @@ const state = {
   selected: new Set(),
 };
 
+let installPrompt = null;
+
 const NAMES = [
   'Ariel', 'Lior', 'Noam', 'Tal', 'Yael', 'Maya', 'Eli', 'Nina', 'Oren', 'Rina',
   'Ziv', 'Adi', 'Shai', 'Rafi', 'Dana', 'Lana', 'Ilan', 'Gali', 'Hila', 'Yoni'
@@ -70,6 +72,20 @@ function renderGlobalStats() {
   const stats = loadStats();
   const rating = loadRating();
   $('global-stats').textContent = `Games: ${stats.games} · Wins: ${stats.wins} · Losses: ${stats.losses} · Rating: ${rating}`;
+  renderProfile(stats, rating);
+}
+
+function renderProfile(stats, rating) {
+  const card = $('profile-card');
+  if (!card) return;
+  const games = stats.games || 0;
+  const winRate = games ? Math.round((stats.wins / games) * 100) : 0;
+  card.innerHTML = `
+    <div style="font-weight:700; margin-bottom:6px;">Your Profile</div>
+    <div>Rating: <strong>${rating}</strong></div>
+    <div>Record: ${stats.wins}-${stats.losses}</div>
+    <div>Win Rate: ${winRate}%</div>
+  `;
 }
 
 function applySettingsToUI() {
@@ -514,16 +530,17 @@ function allDiscards(hand) {
   return options;
 }
 
-function renderRankings() {
+function renderRankings(mode = 'today') {
   const list = $('rankings-list');
   list.innerHTML = '';
   const base = loadRating();
   const rows = [];
   for (let i = 1; i <= 20; i++) {
     const name = NAMES[Math.floor(Math.random() * NAMES.length)];
-    const rating = clamp(base + randBetween(-500, 700), 600, 2600);
-    const wins = randBetween(10, 260);
-    const losses = randBetween(10, 260);
+    const swing = mode === 'today' ? randBetween(-220, 320) : randBetween(-500, 700);
+    const rating = clamp(base + swing, 600, 2600);
+    const wins = mode === 'today' ? randBetween(2, 40) : randBetween(10, 260);
+    const losses = mode === 'today' ? randBetween(2, 40) : randBetween(10, 260);
     rows.push({ rank: i, name, rating, wins, losses });
   }
   rows.sort((a,b) => b.rating - a.rating).forEach((r, idx) => r.rank = idx + 1);
@@ -533,6 +550,9 @@ function renderRankings() {
     row.innerHTML = `<div class="rank">#${r.rank}</div><div>${r.name}</div><div class="rating">${r.rating}</div><div class="record">${r.wins}-${r.losses}</div>`;
     list.appendChild(row);
   });
+
+  $('tab-today').classList.toggle('active', mode === 'today');
+  $('tab-all').classList.toggle('active', mode === 'all');
 }
 
 function log(msg) {
@@ -555,15 +575,20 @@ $('btn-settings').addEventListener('click', () => {
   applySettingsToUI();
   showScreen('screen-settings');
 });
+$('btn-settings-home').addEventListener('click', () => {
+  applySettingsToUI();
+  showScreen('screen-settings');
+});
 $('btn-how').addEventListener('click', () => showScreen('screen-how'));
 $('btn-back').addEventListener('click', () => showScreen('screen-home'));
 $('btn-rankings').addEventListener('click', () => {
-  renderRankings();
+  renderRankings('today');
   showScreen('screen-rankings');
 });
 $('btn-rankings-back').addEventListener('click', () => showScreen('screen-home'));
-$('btn-install').addEventListener('click', () => showScreen('screen-install'));
 $('btn-install-back').addEventListener('click', () => showScreen('screen-home'));
+$('tab-today').addEventListener('click', () => renderRankings('today'));
+$('tab-all').addEventListener('click', () => renderRankings('all'));
 $('btn-save').addEventListener('click', () => {
   readSettingsFromUI();
   saveSettings();
@@ -586,3 +611,21 @@ $('btn-next').addEventListener('click', () => {
 loadSettings();
 renderGlobalStats();
 showScreen('screen-home');
+
+// Install prompt (Android Chrome)
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $('btn-install').classList.remove('hidden');
+});
+
+$('btn-install').addEventListener('click', async () => {
+  if (!installPrompt) {
+    showScreen('screen-install');
+    return;
+  }
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $('btn-install').classList.add('hidden');
+});
