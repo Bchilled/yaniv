@@ -836,6 +836,14 @@ function startQuickFlow(presetId) {
   }, delay);
 }
 
+function updatePresetDescriptions() {
+  const jokersOn = $('opt-quick-jokers').checked ? 'On' : 'Off';
+  document.querySelectorAll('#preset-list .room-meta').forEach((el) => {
+    const base = el.getAttribute('data-base') || el.textContent;
+    el.textContent = `${base} · Jokers: ${jokersOn}`;
+  });
+}
+
 // Event wiring
 $('btn-login').addEventListener('click', () => {
   const name = $('login-name').value.trim();
@@ -869,6 +877,7 @@ $('btn-signin').addEventListener('click', () => {
 
 $('btn-quick').addEventListener('click', () => showScreen('screen-quick'));
 $('btn-quick-back').addEventListener('click', () => showScreen('screen-home'));
+$('opt-quick-jokers').addEventListener('change', updatePresetDescriptions);
 
 Array.from(document.querySelectorAll('.preset')).forEach((card) => {
   const preset = card.getAttribute('data-preset');
@@ -939,6 +948,23 @@ document.querySelectorAll('#emoji-bar .emoji').forEach((btn) => {
   });
 });
 
+$('btn-emoji').addEventListener('click', () => {
+  $('emoji-wheel').classList.toggle('hidden');
+});
+
+document.querySelectorAll('#emoji-wheel .emoji').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $('emoji-wheel').classList.add('hidden');
+    const emoji = btn.getAttribute('data-emoji');
+    log(`${t('msg_you_sent')} ${emoji}`);
+    setTimeout(() => {
+      const replies = ['⏳','😊','👋','😁','😠','😢','🏆'];
+      const pick = replies[Math.floor(Math.random() * replies.length)];
+      log(`${t('msg_opp_sent')} ${pick}`);
+    }, 600 + Math.random() * 800);
+  });
+});
+
 // Initialize
 loadAccounts();
 buildLanguageOptions();
@@ -947,6 +973,7 @@ loadLanguage(state.lang).then(() => {
   renderGlobalStats();
   hideModal();
   tickOpponents();
+  updatePresetDescriptions();
   showScreen(state.account ? 'screen-home' : 'screen-login');
 });
 

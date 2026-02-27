@@ -77,21 +77,21 @@
           <div class="room preset" data-preset="classic">
             <div>
               <div class="room-title" data-i18n="preset_classic">Classic Yaniv</div>
-              <div class="room-meta" data-i18n="preset_classic_desc">5 cards · Yaniv at 7 · Jokers on · Runs allowed</div>
+              <div class="room-meta" data-base="5 cards · Yaniv at 7 · Runs allowed" data-i18n="preset_classic_desc">5 cards · Yaniv at 7 · Runs allowed · Jokers: On</div>
             </div>
             <button class="primary" data-i18n="btn_select">Select</button>
           </div>
           <div class="room preset" data-preset="strict">
             <div>
               <div class="room-title" data-i18n="preset_strict">Strict Yaniv</div>
-              <div class="room-meta" data-i18n="preset_strict_desc">5 cards · Yaniv at 5 · Jokers off · Sets only</div>
+              <div class="room-meta" data-base="5 cards · Yaniv at 5 · Sets only" data-i18n="preset_strict_desc">5 cards · Yaniv at 5 · Sets only · Jokers: On</div>
             </div>
             <button class="primary" data-i18n="btn_select">Select</button>
           </div>
           <div class="room preset" data-preset="relaxed">
             <div>
               <div class="room-title" data-i18n="preset_relaxed">Relaxed Yaniv</div>
-              <div class="room-meta" data-i18n="preset_relaxed_desc">5 cards · Yaniv at 7 · Jokers on · Sets only</div>
+              <div class="room-meta" data-base="5 cards · Yaniv at 7 · Sets only" data-i18n="preset_relaxed_desc">5 cards · Yaniv at 7 · Sets only · Jokers: On</div>
             </div>
             <button class="primary" data-i18n="btn_select">Select</button>
           </div>
@@ -206,13 +206,16 @@
         </div>
         <div class="emoji-bar" id="emoji-bar">
           <span class="emoji-label" data-i18n="label_emoji">Emoji</span>
-          <button class="emoji" data-emoji="⏳">⏳</button>
-          <button class="emoji" data-emoji="😊">😊</button>
-          <button class="emoji" data-emoji="👋">👋</button>
-          <button class="emoji" data-emoji="😁">😁</button>
-          <button class="emoji" data-emoji="😠">😠</button>
-          <button class="emoji" data-emoji="😢">😢</button>
-          <button class="emoji" data-emoji="🏆">🏆</button>
+          <button id="btn-emoji" class="emoji big-emoji">😊</button>
+          <div id="emoji-wheel" class="emoji-wheel hidden">
+            <button class="emoji" data-emoji="⏳">⏳</button>
+            <button class="emoji" data-emoji="😊">😊</button>
+            <button class="emoji" data-emoji="👋">👋</button>
+            <button class="emoji" data-emoji="😁">😁</button>
+            <button class="emoji" data-emoji="😠">😠</button>
+            <button class="emoji" data-emoji="😢">😢</button>
+            <button class="emoji" data-emoji="🏆">🏆</button>
+          </div>
         </div>
         <div id="log" class="log"></div>
       </section>

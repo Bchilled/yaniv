@@ -383,6 +383,22 @@ select, input[type="range"], input[type="text"] {
   font-size: 18px;
 }
 
+.big-emoji {
+  font-size: 22px;
+  padding: 8px 12px;
+}
+
+.emoji-wheel {
+  display: grid;
+  grid-template-columns: repeat(4, 36px);
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2);
+}
+
 .overlay {
   position: fixed;
   inset: 0;
