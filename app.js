@@ -29,9 +29,9 @@ const DEFAULT_SETTINGS = {
 const DEFAULT_STATS = { wins: 0, losses: 0, games: 0 };
 
 const PRESETS = {
-  classic: { yanivLimit: 7, handSize: 5, discards: 'set-run', jokers: 'on' },
-  strict: { yanivLimit: 5, handSize: 5, discards: 'set', jokers: 'off' },
-  relaxed: { yanivLimit: 7, handSize: 5, discards: 'set', jokers: 'on' },
+  classic: { yanivLimit: 7, handSize: 5, discards: 'set-run' },
+  strict: { yanivLimit: 5, handSize: 5, discards: 'set' },
+  relaxed: { yanivLimit: 7, handSize: 5, discards: 'set' },
 };
 
 const LANGUAGE_LIST = [
@@ -274,6 +274,16 @@ function rules() {
   return state.sessionRules || state.settings;
 }
 
+const actionLog = [];
+
+function log(msg) {
+  const el = $('log');
+  const time = new Date().toLocaleTimeString();
+  actionLog.unshift(`[${time}] ${msg}`);
+  while (actionLog.length > 6) actionLog.pop();
+  el.textContent = actionLog.join('\n');
+}
+
 function makeDeck() {
   const suits = ['S', 'H', 'D', 'C'];
   const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -394,11 +404,11 @@ function startGame() {
   };
   deal(state.game);
   state.selected.clear();
-  renderGame();
+  renderGame(true);
   log(t('msg_round_start'));
 }
 
-function renderGame() {
+function renderGame(isDeal = false) {
   const game = state.game;
   if (!game) return;
 
@@ -427,6 +437,7 @@ function renderGame() {
     const div = document.createElement('div');
     div.className = 'card';
     renderCard(div, c);
+    if (isDeal) div.classList.add('deal');
     if (state.selected.has(idx)) div.classList.add('selected');
     div.addEventListener('click', () => toggleSelect(idx));
     hand.appendChild(div);
@@ -801,12 +812,6 @@ function playSound(type) {
   } catch {}
 }
 
-function log(msg) {
-  const el = $('log');
-  const time = new Date().toLocaleTimeString();
-  el.textContent = `[${time}] ${msg}\n` + el.textContent;
-}
-
 function randBetween(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -816,7 +821,8 @@ function clamp(v, min, max) {
 }
 
 function startQuickFlow(presetId) {
-  state.sessionRules = { ...state.settings, ...PRESETS[presetId] };
+  const jokersOn = $('opt-quick-jokers').checked ? 'on' : 'off';
+  state.sessionRules = { ...state.settings, ...PRESETS[presetId], jokers: jokersOn, players: 2 };
   showOverlay(t('msg_connecting'));
   const delay = 900 + Math.floor(Math.random() * 1600);
   setTimeout(() => {

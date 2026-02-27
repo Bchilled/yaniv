@@ -62,6 +62,7 @@
   "preset_strict_desc": "5 cards · Yaniv at 5 · Jokers off · Sets only",
   "preset_relaxed": "Relaxed Yaniv",
   "preset_relaxed_desc": "5 cards · Yaniv at 7 · Jokers on · Sets only",
+  "label_jokers_optional": "Jokers",
   "btn_select": "Select",
   "login_title": "Welcome",
   "login_desc": "Create a player profile to continue.",

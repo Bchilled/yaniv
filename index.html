@@ -69,6 +69,10 @@
       <section class="panel hidden" id="screen-quick">
         <h2 data-i18n="quick_title">Quick Match</h2>
         <p class="muted" data-i18n="quick_desc">Choose a common Yaniv ruleset.</p>
+        <label class="inline">
+          <input id="opt-quick-jokers" type="checkbox" checked />
+          <span data-i18n="label_jokers_optional">Jokers</span>
+        </label>
         <div class="rooms" id="preset-list">
           <div class="room preset" data-preset="classic">
             <div>
@@ -179,7 +183,7 @@
         <div class="match-header" id="match-header"></div>
         <div class="board">
           <div class="opponents" id="opponents"></div>
-          <div class="center">
+          <div class="center vertical">
             <div class="pile">
               <div class="pile-label" data-i18n="label_discard">Discard</div>
               <div id="discard-top" class="card back"></div>
