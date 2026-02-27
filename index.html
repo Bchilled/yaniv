@@ -25,6 +25,29 @@
     </header>
 
     <main class="layout">
+      <section class="panel hidden" id="screen-login">
+        <h1 data-i18n="login_title">Welcome</h1>
+        <p class="muted" data-i18n="login_desc">Create a player profile to continue.</p>
+        <div class="grid">
+          <label>
+            <span data-i18n="label_username">Username</span>
+            <input id="login-name" type="text" placeholder="Player" />
+          </label>
+          <label>
+            <span data-i18n="label_email">Email (optional)</span>
+            <input id="login-email" type="email" placeholder="you@example.com" />
+          </label>
+        </div>
+        <div class="home-actions">
+          <button id="btn-login" class="primary" data-i18n="btn_login">Create Account</button>
+          <button id="btn-signin" class="ghost" data-i18n="btn_signin">Sign In</button>
+        </div>
+        <div class="login-rating">
+          <span data-i18n="label_rating_app">4.8 ★</span>
+          <span data-i18n="label_players_online">1.2M players</span>
+        </div>
+      </section>
+
       <section class="panel home" id="screen-home">
         <div class="hero">
           <div>
@@ -43,26 +66,41 @@
         <div class="stats" id="global-stats"></div>
       </section>
 
+      <section class="panel hidden" id="screen-quick">
+        <h2 data-i18n="quick_title">Quick Match</h2>
+        <p class="muted" data-i18n="quick_desc">Choose a common Yaniv ruleset.</p>
+        <div class="rooms" id="preset-list">
+          <div class="room preset" data-preset="classic">
+            <div>
+              <div class="room-title" data-i18n="preset_classic">Classic Yaniv</div>
+              <div class="room-meta" data-i18n="preset_classic_desc">5 cards · Yaniv at 7 · Jokers on · Runs allowed</div>
+            </div>
+            <button class="primary" data-i18n="btn_select">Select</button>
+          </div>
+          <div class="room preset" data-preset="strict">
+            <div>
+              <div class="room-title" data-i18n="preset_strict">Strict Yaniv</div>
+              <div class="room-meta" data-i18n="preset_strict_desc">5 cards · Yaniv at 5 · Jokers off · Sets only</div>
+            </div>
+            <button class="primary" data-i18n="btn_select">Select</button>
+          </div>
+          <div class="room preset" data-preset="relaxed">
+            <div>
+              <div class="room-title" data-i18n="preset_relaxed">Relaxed Yaniv</div>
+              <div class="room-meta" data-i18n="preset_relaxed_desc">5 cards · Yaniv at 7 · Jokers on · Sets only</div>
+            </div>
+            <button class="primary" data-i18n="btn_select">Select</button>
+          </div>
+        </div>
+        <button id="btn-quick-back" class="secondary" data-i18n="btn_back">Back</button>
+      </section>
+
       <section class="panel hidden" id="screen-settings">
         <h2 data-i18n="settings_title">Game Variants</h2>
         <div class="grid">
           <label>
-            <span data-i18n="label_name">Player Name</span>
-            <input id="opt-name" type="text" placeholder="Player" />
-          </label>
-          <label>
             <span data-i18n="label_language">Language</span>
             <select id="opt-lang"></select>
-          </label>
-          <label>
-            <span data-i18n="label_difficulty">Difficulty</span>
-            <select id="opt-difficulty">
-              <option value="easy" data-i18n="diff_easy">Easy</option>
-              <option value="normal" data-i18n="diff_normal" selected>Normal</option>
-              <option value="hard" data-i18n="diff_hard">Hard</option>
-              <option value="expert" data-i18n="diff_expert">Expert</option>
-              <option value="insane" data-i18n="diff_insane">Insane</option>
-            </select>
           </label>
           <label>
             <span data-i18n="label_players">Players</span>
@@ -127,15 +165,8 @@
             </select>
           </label>
           <label>
-            <span data-i18n="label_ai">Opponent Strength</span>
-            <input id="opt-ai" type="range" min="1" max="10" value="6" />
-          </label>
-          <label>
-            <span data-i18n="label_fake">Fake Opponent Records</span>
-            <select id="opt-fake">
-              <option value="on">On</option>
-              <option value="off">Off</option>
-            </select>
+            <span data-i18n="label_account">Account</span>
+            <button id="btn-switch" class="ghost" data-i18n="btn_switch">Switch Account</button>
           </label>
         </div>
         <div class="home-actions">

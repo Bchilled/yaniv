@@ -1,6 +1,6 @@
 # Yaniv
 
-A Yaniv web app with ranked matches and local stats.
+A Yaniv web app.
 
 ## Run locally
 
@@ -18,4 +18,4 @@ Open `index.html` in a browser.
 
 ## Settings
 
-Use the in-app Settings screen to choose Yaniv rules and AI strength.
+Use the in-app Settings screen to choose Yaniv rules.

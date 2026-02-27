@@ -1,34 +1,37 @@
-﻿/* Yaniv ranked match simulator */
+﻿/* Yaniv app */
 const $ = (id) => document.getElementById(id);
 
 const state = {
+  accounts: [],
+  account: null,
   settings: null,
+  stats: null,
   game: null,
-  phase: 'idle',
+  sessionRules: null,
   selected: new Set(),
-  mode: 'quick',
   lang: 'en',
-  firstRun: false,
 };
 
 let installPrompt = null;
 
-const NAMES = buildNames();
-
 const DEFAULT_SETTINGS = {
-  playerName: 'Player',
   language: 'en',
-  difficulty: 'normal',
   players: 3,
   yanivLimit: 7,
   handSize: 5,
-  discards: 'set',
+  discards: 'set-run',
   jokers: 'on',
   assaf: 30,
   end: 'elim',
   reset: 'off',
-  aiStrength: 6,
-  fakeRecords: 'on',
+};
+
+const DEFAULT_STATS = { wins: 0, losses: 0, games: 0 };
+
+const PRESETS = {
+  classic: { yanivLimit: 7, handSize: 5, discards: 'set-run', jokers: 'on' },
+  strict: { yanivLimit: 5, handSize: 5, discards: 'set', jokers: 'off' },
+  relaxed: { yanivLimit: 7, handSize: 5, discards: 'set', jokers: 'on' },
 };
 
 const LANGUAGE_LIST = [
@@ -44,6 +47,8 @@ const LANGUAGE_LIST = [
   { code: 'tr', label: 'Türkçe' },
   { code: 'ne', label: 'नेपाली' },
 ];
+
+const NAMES = buildNames();
 
 const i18nCache = new Map();
 let i18n = {};
@@ -110,24 +115,94 @@ function buildLanguageOptions() {
   });
 }
 
-function saveSettings() {
-  localStorage.setItem('yaniv.settings', JSON.stringify(state.settings));
+function showScreen(id) {
+  ['screen-login', 'screen-home', 'screen-quick', 'screen-settings', 'screen-game', 'screen-how', 'screen-rankings', 'screen-install'].forEach((sid) => {
+    $(sid).classList.toggle('hidden', sid !== id);
+  });
 }
 
-function loadSettings() {
-  const raw = localStorage.getItem('yaniv.settings');
-  state.firstRun = !raw;
-  state.settings = raw ? JSON.parse(raw) : { ...DEFAULT_SETTINGS };
+function showOverlay(text) {
+  $('overlay-text').textContent = text;
+  $('overlay').classList.remove('hidden');
+}
+
+function hideOverlay() {
+  $('overlay').classList.add('hidden');
+}
+
+function loadAccounts() {
+  const raw = localStorage.getItem('yaniv.accounts');
+  state.accounts = raw ? JSON.parse(raw) : [];
+  const currentId = localStorage.getItem('yaniv.account.current');
+  const account = state.accounts.find((a) => a.id === currentId) || null;
+  setCurrentAccount(account);
+}
+
+function saveAccounts() {
+  localStorage.setItem('yaniv.accounts', JSON.stringify(state.accounts));
+  if (state.account) localStorage.setItem('yaniv.account.current', state.account.id);
+}
+
+function setCurrentAccount(account) {
+  state.account = account;
+  if (!account) {
+    state.settings = { ...DEFAULT_SETTINGS };
+    state.stats = { ...DEFAULT_STATS };
+    state.lang = state.settings.language || 'en';
+    return;
+  }
+  state.settings = { ...DEFAULT_SETTINGS, ...account.settings };
+  state.stats = { ...DEFAULT_STATS, ...account.stats };
   state.lang = state.settings.language || 'en';
 }
 
-function saveStats(stats) {
-  localStorage.setItem('yaniv.stats', JSON.stringify(stats));
+function createAccount(name, email) {
+  const id = `acc_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const legacyStats = safeParse(localStorage.getItem('yaniv.stats')) || null;
+  const legacySettings = safeParse(localStorage.getItem('yaniv.settings')) || null;
+  const account = {
+    id,
+    name,
+    email,
+    createdAt: new Date().toISOString(),
+    stats: legacyStats || { ...DEFAULT_STATS },
+    settings: { ...DEFAULT_SETTINGS, ...(legacySettings || {}), language: state.lang },
+  };
+  state.accounts.push(account);
+  setCurrentAccount(account);
+  saveAccounts();
 }
 
-function loadStats() {
-  const raw = localStorage.getItem('yaniv.stats');
-  return raw ? JSON.parse(raw) : { wins: 0, losses: 0, games: 0 };
+function signIn(name, email) {
+  const match = state.accounts.find((a) =>
+    (email && a.email && a.email.toLowerCase() === email.toLowerCase()) ||
+    (!email && a.name.toLowerCase() === name.toLowerCase())
+  );
+  if (!match) return false;
+  setCurrentAccount(match);
+  saveAccounts();
+  return true;
+}
+
+function logout() {
+  localStorage.removeItem('yaniv.account.current');
+  setCurrentAccount(null);
+}
+
+function safeParse(raw) {
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function saveSettings() {
+  if (!state.account) return;
+  state.account.settings = { ...state.settings };
+  saveAccounts();
+}
+
+function saveStats() {
+  if (!state.account) return;
+  state.account.stats = { ...state.stats };
+  saveAccounts();
 }
 
 function ratingFromStats(stats) {
@@ -137,44 +212,38 @@ function ratingFromStats(stats) {
 }
 
 function difficultyStrength() {
-  const d = state.settings.difficulty || 'normal';
-  if (d === 'easy') return 3;
-  if (d === 'hard') return 7;
-  if (d === 'expert') return 9;
-  if (d === 'insane') return 10;
-  return 5;
+  const rating = ratingFromStats(state.stats);
+  const scaled = Math.round(3 + (rating - 600) / 250);
+  return clamp(scaled, 3, 10);
 }
 
-function showScreen(id) {
-  ['screen-home', 'screen-settings', 'screen-game', 'screen-how', 'screen-rankings', 'screen-install'].forEach((sid) => {
-    $(sid).classList.toggle('hidden', sid !== id);
-  });
+function aiSkillForOpponent(rating) {
+  const norm = clamp((rating - 600) / 2000, 0, 1);
+  return 0.4 + norm * 0.6;
 }
 
 function renderGlobalStats() {
-  const stats = loadStats();
-  const rating = ratingFromStats(stats);
-  $('global-stats').textContent = `${t('label_games')}: ${stats.games} · ${t('label_wins')}: ${stats.wins} · ${t('label_losses')}: ${stats.losses} · ${t('label_rating')}: ${rating}`;
-  renderProfile(stats, rating);
+  const rating = ratingFromStats(state.stats);
+  $('global-stats').textContent = `${t('label_games')}: ${state.stats.games} · ${t('label_wins')}: ${state.stats.wins} · ${t('label_losses')}: ${state.stats.losses} · ${t('label_rating')}: ${rating}`;
+  renderProfile();
 }
 
-function renderProfile(stats, rating) {
+function renderProfile() {
   const card = $('profile-card');
   if (!card) return;
-  const games = stats.games || 0;
-  const winRate = games ? Math.round((stats.wins / games) * 100) : 0;
+  const games = state.stats.games || 0;
+  const winRate = games ? Math.round((state.stats.wins / games) * 100) : 0;
+  const rating = ratingFromStats(state.stats);
   card.innerHTML = `
-    <div style="font-weight:700; margin-bottom:6px;">${state.settings.playerName}</div>
+    <div style="font-weight:700; margin-bottom:6px;">${state.account ? state.account.name : t('label_guest')}</div>
     <div>${t('label_rating')}: <strong>${rating}</strong></div>
-    <div>${t('label_record')}: ${stats.wins}-${stats.losses}</div>
+    <div>${t('label_record')}: ${state.stats.wins}-${state.stats.losses}</div>
     <div>${t('label_winrate')}: ${winRate}%</div>
   `;
 }
 
 function applySettingsToUI() {
-  $('opt-name').value = state.settings.playerName;
   $('opt-lang').value = state.lang;
-  $('opt-difficulty').value = state.settings.difficulty || 'normal';
   $('opt-players').value = String(state.settings.players);
   $('opt-yaniv').value = String(state.settings.yanivLimit);
   $('opt-hand').value = String(state.settings.handSize);
@@ -183,15 +252,12 @@ function applySettingsToUI() {
   $('opt-assaf').value = String(state.settings.assaf);
   $('opt-end').value = state.settings.end;
   $('opt-reset').value = state.settings.reset;
-  $('opt-ai').value = String(state.settings.aiStrength);
-  $('opt-fake').value = state.settings.fakeRecords;
 }
 
 function readSettingsFromUI() {
   state.settings = {
-    playerName: $('opt-name').value.trim() || 'Player',
+    ...state.settings,
     language: $('opt-lang').value,
-    difficulty: $('opt-difficulty').value,
     players: Number($('opt-players').value),
     yanivLimit: Number($('opt-yaniv').value),
     handSize: Number($('opt-hand').value),
@@ -200,10 +266,12 @@ function readSettingsFromUI() {
     assaf: Number($('opt-assaf').value),
     end: $('opt-end').value,
     reset: $('opt-reset').value,
-    aiStrength: Number($('opt-ai').value),
-    fakeRecords: $('opt-fake').value,
   };
   state.lang = state.settings.language || 'en';
+}
+
+function rules() {
+  return state.sessionRules || state.settings;
 }
 
 function makeDeck() {
@@ -215,7 +283,7 @@ function makeDeck() {
       deck.push({ rank: ranks[i], suit: s, value: i === 0 ? 1 : i >= 10 ? 10 : i + 1, id: `${ranks[i]}${s}` });
     }
   }
-  if (state.settings.jokers !== 'off') {
+  if (rules().jokers !== 'off') {
     deck.push({ rank: 'Joker', suit: '*', value: 0, id: 'Joker1' });
     deck.push({ rank: 'Joker', suit: '*', value: 0, id: 'Joker2' });
   }
@@ -241,42 +309,12 @@ function drawCard(game) {
 }
 
 function deal(game) {
-  for (let i = 0; i < state.settings.handSize; i++) {
+  for (let i = 0; i < rules().handSize; i++) {
     for (const p of game.players) {
       p.hand.push(drawCard(game));
     }
   }
   game.discardPile.push(drawCard(game));
-}
-
-function createMatch(mode, room) {
-  const stats = loadStats();
-  const playerRating = ratingFromStats(stats);
-  const strengthBias = (state.settings.aiStrength - 5) * 40;
-  const opponents = [];
-  const used = new Set([state.settings.playerName]);
-  const pool = loadOpponentPool();
-
-  for (let i = 1; i < state.settings.players; i++) {
-    const opp = pickOpponent(pool, used, playerRating, room);
-    used.add(opp.name);
-    opponents.push(opp);
-  }
-
-  return {
-    title: mode === 'ranked' ? room.title : 'Quick Match',
-    playerRating,
-    opponents,
-  };
-}
-
-function createPlayers(match) {
-  const players = [];
-  players.push({ name: state.settings.playerName, isHuman: true, hand: [], score: 0, record: null, rating: match.playerRating });
-  for (const opp of match.opponents) {
-    players.push({ name: opp.name, isHuman: false, hand: [], score: 0, record: opp.record, rating: opp.rating });
-  }
-  return players;
 }
 
 function loadOpponentPool() {
@@ -286,6 +324,7 @@ function loadOpponentPool() {
     name,
     rating: randBetween(800, 2400),
     record: { wins: randBetween(10, 200), losses: randBetween(10, 200) },
+    lastSeen: Date.now() - randBetween(10, 300) * 60000,
   }));
   localStorage.setItem('yaniv.opponents', JSON.stringify(pool));
   return pool;
@@ -295,46 +334,55 @@ function saveOpponentPool(pool) {
   localStorage.setItem('yaniv.opponents', JSON.stringify(pool));
 }
 
-function pickOpponent(pool, used, playerRating, room) {
-  let candidate = null;
-  for (let i = 0; i < 40; i++) {
-    const pick = pool[randBetween(0, pool.length - 1)];
-    if (used.has(pick.name)) continue;
-    if (room) {
-      if (pick.rating < room.min || pick.rating > room.max) continue;
-    } else {
-      if (Math.abs(pick.rating - playerRating) > 400) continue;
-    }
-    candidate = pick;
-    break;
-  }
-  if (!candidate) {
-    candidate = pool.find((p) => !used.has(p.name)) || pool[0];
-  }
-  return candidate;
-}
-
-function decayOpponentRecords() {
+function tickOpponents() {
   const pool = loadOpponentPool();
   for (let i = 0; i < pool.length; i += 25) {
     const p = pool[i];
     p.record.wins += randBetween(0, 2);
     p.record.losses += randBetween(0, 2);
+    p.rating = clamp(p.rating + randBetween(-12, 16), 600, 2600);
+    p.lastSeen = Date.now() - randBetween(1, 240) * 60000;
   }
   saveOpponentPool(pool);
 }
 
-function randBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function pickOpponent(pool, used, playerRating) {
+  let candidate = null;
+  for (let i = 0; i < 60; i++) {
+    const pick = pool[randBetween(0, pool.length - 1)];
+    if (used.has(pick.name)) continue;
+    if (Math.abs(pick.rating - playerRating) > 500) continue;
+    candidate = pick;
+    break;
+  }
+  if (!candidate) candidate = pool.find((p) => !used.has(p.name)) || pool[0];
+  return candidate;
 }
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+function createMatch() {
+  const playerRating = ratingFromStats(state.stats);
+  const opponents = [];
+  const used = new Set([state.account.name]);
+  const pool = loadOpponentPool();
+  for (let i = 1; i < rules().players; i++) {
+    const opp = pickOpponent(pool, used, playerRating);
+    used.add(opp.name);
+    opponents.push(opp);
+  }
+  return { playerRating, opponents };
 }
 
-function startGame(mode, room) {
-  state.mode = mode;
-  const match = createMatch(mode, room);
+function createPlayers(match) {
+  const players = [];
+  players.push({ name: state.account.name, isHuman: true, hand: [], score: 0, rating: match.playerRating });
+  for (const opp of match.opponents) {
+    players.push({ name: opp.name, isHuman: false, hand: [], score: 0, rating: opp.rating, record: opp.record, lastSeen: opp.lastSeen });
+  }
+  return players;
+}
+
+function startGame() {
+  const match = createMatch();
   state.game = {
     players: createPlayers(match),
     drawPile: makeDeck(),
@@ -342,46 +390,19 @@ function startGame(mode, room) {
     turn: 0,
     round: 1,
     phase: 'discard',
-    inRound: true,
     match,
   };
   deal(state.game);
   state.selected.clear();
-  state.phase = 'player';
   renderGame();
-  log(`Match found. Round ${state.game.round} starts.`);
-}
-
-function showOverlay(text) {
-  $('overlay-text').textContent = text;
-  $('overlay').classList.remove('hidden');
-}
-
-function hideOverlay() {
-  $('overlay').classList.add('hidden');
-}
-
-function maybeDisconnectWin() {
-  if (state.mode !== 'quick') return false;
-  const chance = Math.random();
-  if (chance < 0.01) {
-    const stats = loadStats();
-    stats.games += 1;
-    stats.wins += 1;
-    saveStats(stats);
-    renderGlobalStats();
-    alert(t('msg_disconnect_win'));
-    showScreen('screen-home');
-    return true;
-  }
-  return false;
+  log(t('msg_round_start'));
 }
 
 function renderGame() {
   const game = state.game;
   if (!game) return;
 
-  $('match-header').textContent = `Match: ${game.match.title} · Your Rating: ${game.match.playerRating} · Opponents: ${game.match.opponents.map((o) => o.name).join(', ')}`;
+  $('match-header').textContent = tFmt('match_header', { rating: game.match.playerRating, names: game.match.opponents.map((o) => o.name).join(', ') });
 
   const oppEl = $('opponents');
   oppEl.innerHTML = '';
@@ -389,17 +410,16 @@ function renderGame() {
     if (p.isHuman) return;
     const div = document.createElement('div');
     div.className = 'opponent';
-    const record = p.record ? ` · ${p.record.wins}-${p.record.losses}` : '';
-    const rating = p.rating ? ` · Rating ${p.rating}` : '';
-    div.textContent = `${p.name}${record}${rating} · Hand: ${p.hand.length} · Score: ${p.score}`;
-    div.addEventListener('click', () => showProfile(p.name, p.record, p.rating));
+    const rating = p.rating ? ` · ${t('label_rating')} ${p.rating}` : '';
+    div.textContent = `${p.name}${rating} · ${t('label_hand')} ${p.hand.length} · ${t('label_score')} ${p.score}`;
+    div.addEventListener('click', () => showProfile(p.name, p.record, p.rating, p.lastSeen));
     if (idx === game.turn && game.phase !== 'round-end') div.style.borderColor = 'var(--accent)';
     oppEl.appendChild(div);
   });
 
   const top = game.discardPile[game.discardPile.length - 1];
   renderCard($('discard-top'), top);
-  $('draw-count').textContent = `${game.drawPile.length} cards`;
+  $('draw-count').textContent = `${game.drawPile.length} ${t('label_cards')}`;
 
   const hand = $('player-hand');
   hand.innerHTML = '';
@@ -436,10 +456,10 @@ function renderCard(el, card) {
 }
 
 function suitSymbol(suit) {
-  if (suit === 'S') return '&spades;';
-  if (suit === 'H') return '&hearts;';
-  if (suit === 'D') return '&diams;';
-  return '&clubs;';
+  if (suit === 'S') return '♠';
+  if (suit === 'H') return '♥';
+  if (suit === 'D') return '♦';
+  return '♣';
 }
 
 function toggleSelect(idx) {
@@ -456,9 +476,9 @@ function selectedCards() {
 
 function discardSelected() {
   const picks = selectedCards();
-  if (picks.length === 0) return log('Select cards to discard.');
+  if (picks.length === 0) return log(t('msg_select_cards'));
   const cards = picks.map((p) => p.card);
-  if (!isValidDiscard(cards)) return log('Invalid discard. Use sets or runs based on settings.');
+  if (!isValidDiscard(cards)) return log(t('msg_invalid_discard'));
 
   const hand = state.game.players[0].hand;
   const indexes = picks.map((p) => p.idx).sort((a,b) => b - a);
@@ -468,19 +488,17 @@ function discardSelected() {
   playSound('discard');
   state.selected.clear();
   state.game.phase = 'draw';
-  log(`You discarded ${cards.length} card(s).`);
+  log(tFmt('msg_discarded', { count: cards.length }));
   renderGame();
 }
 
 function drawFromPile(which) {
   const game = state.game;
   if (game.turn !== 0 || game.phase !== 'draw') return;
-  const card = which === 'discard'
-    ? game.discardPile.pop()
-    : drawCard(game);
+  const card = which === 'discard' ? game.discardPile.pop() : drawCard(game);
   game.players[0].hand.push(card);
   playSound('draw');
-  log(`You drew a card.`);
+  log(t('msg_drew'));
   endTurn();
 }
 
@@ -490,49 +508,69 @@ function endTurn() {
   game.turn = (game.turn + 1) % game.players.length;
   renderGame();
   if (game.turn !== 0) aiTurn();
-  else log('Your turn.');
+  else log(t('msg_your_turn'));
+}
+
+function maybeDisconnectWin() {
+  const chance = Math.random();
+  if (chance < 0.01) {
+    state.stats.games += 1;
+    state.stats.wins += 1;
+    saveStats();
+    renderGlobalStats();
+    alert(t('msg_disconnect_win'));
+    showScreen('screen-home');
+    return true;
+  }
+  return false;
 }
 
 function aiTurn() {
   const game = state.game;
-  const ai = game.players[game.turn];
   if (maybeDisconnectWin()) return;
+  const ai = game.players[game.turn];
+  const skill = aiSkillForOpponent(ai.rating || 1400);
   const total = handTotal(ai.hand);
-  const willCall = total <= state.settings.yanivLimit && Math.random() < aiCallChance();
-  if (willCall) {
-    log(`${ai.name} calls Yaniv.`);
-    resolveYaniv(game.turn);
-    return;
-  }
 
-  const discard = aiChooseDiscard(ai.hand);
-  discard.forEach((c) => {
-    const idx = ai.hand.indexOf(c);
-    if (idx >= 0) ai.hand.splice(idx, 1);
-    game.discardPile.push(c);
-  });
-  log(`${ai.name} discards ${discard.length} card(s).`);
+  const callChance = 0.1 + skill * 0.75;
+  const willCall = total <= rules().yanivLimit && Math.random() < callChance;
 
-  const top = game.discardPile[game.discardPile.length - 1];
-  const takeDiscard = shouldTakeDiscard(ai.hand, top);
-  const drawn = takeDiscard ? game.discardPile.pop() : drawCard(game);
-  ai.hand.push(drawn);
-  log(`${ai.name} draws ${takeDiscard ? 'from discard' : 'a card'}.`);
+  const thinkDelay = randBetween(400, 1400);
+  setTimeout(() => {
+    if (willCall) {
+      log(`${ai.name} ${t('msg_calls')}`);
+      resolveYaniv(game.turn);
+      return;
+    }
 
-  game.turn = (game.turn + 1) % game.players.length;
-  renderGame();
-  if (game.turn === 0) log('Your turn.');
-  else setTimeout(aiTurn, 400);
+    const discard = aiChooseDiscard(ai.hand, skill);
+    discard.forEach((c) => {
+      const idx = ai.hand.indexOf(c);
+      if (idx >= 0) ai.hand.splice(idx, 1);
+      game.discardPile.push(c);
+    });
+    log(`${ai.name} ${t('msg_discarded_ai')}`);
+
+    const top = game.discardPile[game.discardPile.length - 1];
+    const takeDiscard = shouldTakeDiscard(ai.hand, top, skill);
+    const drawDelay = randBetween(350, 1100);
+    setTimeout(() => {
+      const drawn = takeDiscard ? game.discardPile.pop() : drawCard(game);
+      ai.hand.push(drawn);
+      log(`${ai.name} ${takeDiscard ? t('msg_took') : t('msg_drew_ai')}`);
+      game.turn = (game.turn + 1) % game.players.length;
+      renderGame();
+      if (game.turn === 0) log(t('msg_your_turn'));
+      else aiTurn();
+    }, drawDelay);
+  }, thinkDelay);
 }
 
-function aiCallChance() {
-  const strength = difficultyStrength();
-  return 0.12 + strength * 0.08;
-}
-
-function aiChooseDiscard(hand) {
+function aiChooseDiscard(hand, skill) {
   const options = allDiscards(hand);
   if (options.length === 0) return [hand[0]];
+  if (skill < 0.5) return options[randBetween(0, options.length - 1)];
+
   let best = options[0];
   let bestScore = -Infinity;
   for (const opt of options) {
@@ -540,20 +578,25 @@ function aiChooseDiscard(hand) {
     const score = -handTotal(remaining) + opt.length * 0.4;
     if (score > bestScore) { bestScore = score; best = opt; }
   }
+  if (skill < 0.7 && Math.random() < 0.35) {
+    return options[randBetween(0, options.length - 1)];
+  }
   return best;
 }
 
-function shouldTakeDiscard(hand, top) {
+function shouldTakeDiscard(hand, top, skill) {
   if (!top) return false;
   const current = handTotal(hand);
   const withTop = handTotal(hand.concat([top]));
-  return withTop < current - 2;
+  const improvement = current - withTop;
+  const threshold = skill > 0.8 ? 1 : skill > 0.6 ? 2 : 3;
+  return improvement >= threshold;
 }
 
 function isValidDiscard(cards) {
   if (cards.length === 1) return true;
   if (isSet(cards)) return true;
-  if (state.settings.discards === 'set-run' && isRun(cards)) return true;
+  if (rules().discards === 'set-run' && isRun(cards)) return true;
   return false;
 }
 
@@ -565,14 +608,14 @@ function isSet(cards) {
 function isRun(cards) {
   if (cards.length < 3) return false;
   const nonJokers = cards.filter((c) => c.rank !== 'Joker');
-  if (nonJokers.length === 0) return state.settings.jokers === 'on-run';
+  if (nonJokers.length === 0) return rules().jokers === 'on-run';
   const suit = nonJokers[0].suit;
   if (!nonJokers.every((c) => c.suit === suit)) return false;
   const values = nonJokers.map(rankValue).sort((a,b) => a - b);
   for (let i = 1; i < values.length; i++) if (values[i] === values[i-1]) return false;
 
   const jokers = cards.length - nonJokers.length;
-  if (jokers > 0 && state.settings.jokers !== 'on-run') return false;
+  if (jokers > 0 && rules().jokers !== 'on-run') return false;
 
   let gaps = 0;
   for (let i = 1; i < values.length; i++) gaps += (values[i] - values[i-1] - 1);
@@ -594,11 +637,11 @@ function handTotal(hand) {
 
 function callYaniv() {
   const total = handTotal(state.game.players[0].hand);
-  if (total > state.settings.yanivLimit) {
-    return log(tFmt('msg_too_high', { total, limit: state.settings.yanivLimit }));
+  if (total > rules().yanivLimit) {
+    return log(tFmt('msg_too_high', { total, limit: rules().yanivLimit }));
   }
   playSound('yaniv');
-  log('You call Yaniv.');
+  log(t('msg_you_call'));
   resolveYaniv(0);
 }
 
@@ -610,16 +653,14 @@ function resolveYaniv(callerIndex) {
 
   for (let i = 0; i < game.players.length; i++) {
     if (i === callerIndex) {
-      game.players[i].score += assaf ? callerTotal + state.settings.assaf : 0;
+      game.players[i].score += assaf ? callerTotal + rules().assaf : 0;
     } else {
       game.players[i].score += totals[i];
     }
   }
 
-  const msg = assaf
-    ? `Assaf! Caller gets +${state.settings.assaf}.`
-    : 'Yaniv successful.';
-  log(`${msg} Totals: ${totals.join(', ')}.`);
+  const msg = assaf ? t('msg_assaf') : t('msg_yaniv_success');
+  log(`${msg} ${t('msg_totals')} ${totals.join(', ')}.`);
 
   applyResets();
   const ended = checkGameEnd();
@@ -636,7 +677,7 @@ function resolveYaniv(callerIndex) {
 }
 
 function applyResets() {
-  if (state.settings.reset !== 'on') return;
+  if (rules().reset !== 'on') return;
   for (const p of state.game.players) {
     if (p.score === 100) p.score = 50;
     if (p.score === 200) p.score = 100;
@@ -645,7 +686,7 @@ function applyResets() {
 
 function checkGameEnd() {
   const game = state.game;
-  if (state.settings.end === 'match') {
+  if (rules().end === 'match') {
     const winner = game.players.reduce((a,b) => (a.score < b.score ? a : b));
     if (game.players.some((p) => p.score >= 200)) {
       finishMatch(winner);
@@ -663,14 +704,13 @@ function checkGameEnd() {
 }
 
 function finishMatch(winner) {
-  const stats = loadStats();
-  stats.games += 1;
-  if (winner.isHuman) stats.wins += 1; else stats.losses += 1;
-  saveStats(stats);
+  state.stats.games += 1;
+  if (winner.isHuman) state.stats.wins += 1; else state.stats.losses += 1;
+  saveStats();
+  tickOpponents();
   renderGlobalStats();
-  decayOpponentRecords();
-  log(`Game over. Winner: ${winner.name}.`);
-  alert(`Game over! Winner: ${winner.name}`);
+  log(tFmt('msg_game_over', { name: winner.name }));
+  alert(tFmt('msg_game_over', { name: winner.name }));
   showScreen('screen-home');
 }
 
@@ -684,11 +724,9 @@ function allDiscards(hand) {
     if (!byRank.has(r)) byRank.set(r, []);
     byRank.get(r).push(c);
   }
-  for (const group of byRank.values()) {
-    if (group.length >= 2) options.push(group);
-  }
+  for (const group of byRank.values()) if (group.length >= 2) options.push(group);
 
-  if (state.settings.discards === 'set-run') {
+  if (rules().discards === 'set-run') {
     const bySuit = new Map();
     for (const c of hand) {
       if (c.rank === 'Joker') continue;
@@ -709,11 +747,10 @@ function allDiscards(hand) {
   return options;
 }
 
-function renderRankings(mode = 'today') {
+function renderRankings() {
   const list = $('rankings-list');
   list.innerHTML = '';
-  const stats = loadStats();
-  const rating = ratingFromStats(stats);
+  const rating = ratingFromStats(state.stats);
   const pool = loadOpponentPool();
   const sorted = pool.slice().sort((a,b) => b.rating - a.rating);
   const top = sorted[0];
@@ -726,18 +763,17 @@ function renderRankings(mode = 'today') {
   const yourRow = document.createElement('div');
   const yourRank = sorted.findIndex((p) => p.rating <= rating) + 1 || sorted.length + 1;
   yourRow.className = 'ranking-row';
-  yourRow.innerHTML = `<div class="rank">#${yourRank}</div><div>${state.settings.playerName} (You)</div><div class="rating">${rating}</div>`;
+  yourRow.innerHTML = `<div class="rank">#${yourRank}</div><div>${state.account.name} (${t('label_you')})</div><div class="rating">${rating}</div>`;
   list.appendChild(yourRow);
-
-  $('tab-today').classList.toggle('active', mode === 'today');
-  $('tab-all').classList.toggle('active', mode === 'all');
 }
 
-function showProfile(name, record, rating) {
+function showProfile(name, record, rating, lastSeen) {
   $('modal-title').textContent = name;
+  const minutes = Math.max(1, Math.round((Date.now() - (lastSeen || Date.now())) / 60000));
   $('modal-body').innerHTML = `
     <div>${t('label_rating')}: <strong>${rating || '-'}</strong></div>
     <div>${t('label_record')}: ${record ? `${record.wins}-${record.losses}` : '-'}</div>
+    <div>${t('label_last_seen')}: ${minutes} ${t('label_minutes')}</div>
   `;
   $('modal').classList.remove('hidden');
 }
@@ -762,9 +798,7 @@ function playSound(type) {
       osc.stop();
       ctx.close();
     }, 120);
-  } catch (e) {
-    // no-op
-  }
+  } catch {}
 }
 
 function log(msg) {
@@ -773,34 +807,73 @@ function log(msg) {
   el.textContent = `[${time}] ${msg}\n` + el.textContent;
 }
 
+function randBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function startQuickFlow(presetId) {
+  state.sessionRules = { ...state.settings, ...PRESETS[presetId] };
+  showOverlay(t('msg_connecting'));
+  const delay = 900 + Math.floor(Math.random() * 1600);
+  setTimeout(() => {
+    if (maybeDisconnectWin()) {
+      hideOverlay();
+      return;
+    }
+    startGame();
+    hideOverlay();
+    showScreen('screen-game');
+  }, delay);
+}
+
 // Event wiring
-$('btn-quick').addEventListener('click', () => {
-  showOverlay(t('msg_connecting'));
-  const delay = 900 + Math.floor(Math.random() * 1600);
-  setTimeout(() => {
-    if (maybeDisconnectWin()) {
-      hideOverlay();
-      return;
-    }
-    startGame('quick', null);
+$('btn-login').addEventListener('click', () => {
+  const name = $('login-name').value.trim();
+  const email = $('login-email').value.trim();
+  if (!name) return alert(t('msg_need_name'));
+  showOverlay(t('msg_creating'));
+  setTimeout(async () => {
+    createAccount(name, email);
+    await loadLanguage(state.lang);
+    applyTranslations();
+    renderGlobalStats();
     hideOverlay();
-    showScreen('screen-game');
-  }, delay);
+    showScreen('screen-home');
+  }, 700);
 });
+
+$('btn-signin').addEventListener('click', () => {
+  const name = $('login-name').value.trim();
+  const email = $('login-email').value.trim();
+  showOverlay(t('msg_signing_in'));
+  setTimeout(async () => {
+    const ok = signIn(name, email);
+    hideOverlay();
+    if (!ok) return alert(t('msg_account_not_found'));
+    await loadLanguage(state.lang);
+    applyTranslations();
+    renderGlobalStats();
+    showScreen('screen-home');
+  }, 600);
+});
+
+$('btn-quick').addEventListener('click', () => showScreen('screen-quick'));
+$('btn-quick-back').addEventListener('click', () => showScreen('screen-home'));
+
+Array.from(document.querySelectorAll('.preset')).forEach((card) => {
+  const preset = card.getAttribute('data-preset');
+  card.querySelector('button').addEventListener('click', () => startQuickFlow(preset));
+});
+
 $('btn-new').addEventListener('click', () => {
-  if (state.game && !confirm('Start a new game? Current game will be lost.')) return;
-  showOverlay(t('msg_connecting'));
-  const delay = 900 + Math.floor(Math.random() * 1600);
-  setTimeout(() => {
-    if (maybeDisconnectWin()) {
-      hideOverlay();
-      return;
-    }
-    startGame('quick', null);
-    hideOverlay();
-    showScreen('screen-game');
-  }, delay);
+  if (state.game && !confirm(t('msg_new_game'))) return;
+  showScreen('screen-quick');
 });
+
 $('btn-settings').addEventListener('click', () => {
   applySettingsToUI();
   showScreen('screen-settings');
@@ -812,13 +885,17 @@ $('btn-settings-home').addEventListener('click', () => {
 $('btn-how').addEventListener('click', () => showScreen('screen-how'));
 $('btn-back').addEventListener('click', () => showScreen('screen-home'));
 $('btn-rankings').addEventListener('click', () => {
-  renderRankings('today');
+  renderRankings();
   showScreen('screen-rankings');
 });
 $('btn-rankings-back').addEventListener('click', () => showScreen('screen-home'));
 $('btn-install-back').addEventListener('click', () => showScreen('screen-home'));
-$('tab-today').addEventListener('click', () => renderRankings('today'));
-$('tab-all').addEventListener('click', () => renderRankings('all'));
+$('btn-switch').addEventListener('click', () => {
+  if (!confirm(t('msg_switch_account'))) return;
+  logout();
+  showScreen('screen-login');
+});
+
 $('btn-save').addEventListener('click', () => {
   readSettingsFromUI();
   saveSettings();
@@ -838,8 +915,9 @@ $('btn-next').addEventListener('click', () => {
   state.game.phase = 'discard';
   renderGame();
   if (state.game.turn !== 0) aiTurn();
-  else log('Your turn.');
+  else log(t('msg_your_turn'));
 });
+
 $('modal-close').addEventListener('click', hideModal);
 $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') hideModal(); });
 
@@ -856,15 +934,15 @@ document.querySelectorAll('#emoji-bar .emoji').forEach((btn) => {
 });
 
 // Initialize
-loadSettings();
+loadAccounts();
 buildLanguageOptions();
-(async () => {
-  await loadLanguage(state.lang);
+loadLanguage(state.lang).then(() => {
   applyTranslations();
   renderGlobalStats();
   hideModal();
-  showScreen(state.firstRun ? 'screen-settings' : 'screen-home');
-})();
+  tickOpponents();
+  showScreen(state.account ? 'screen-home' : 'screen-login');
+});
 
 // Install prompt (Android Chrome)
 window.addEventListener('beforeinstallprompt', (e) => {

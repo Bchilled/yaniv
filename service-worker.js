@@ -1,4 +1,4 @@
-const CACHE = 'yaniv-v2';
+const CACHE = 'yaniv-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   './app.js',
   './manifest.json',
   './icon.svg',
+  './assets/logo.svg',
   './i18n/en.json',
   './i18n/he.json',
   './i18n/es.json',
@@ -20,6 +21,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (evt) => {
+  self.skipWaiting();
   evt.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
   );
@@ -27,11 +29,24 @@ self.addEventListener('install', (evt) => {
 
 self.addEventListener('activate', (evt) => {
   evt.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    Promise.all([
+      caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))),
+      self.clients.claim()
+    ])
   );
 });
 
 self.addEventListener('fetch', (evt) => {
+  if (evt.request.mode === 'navigate') {
+    evt.respondWith(
+      fetch(evt.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(evt.request, copy));
+        return res;
+      }).catch(() => caches.match(evt.request))
+    );
+    return;
+  }
   evt.respondWith(
     caches.match(evt.request).then((cached) => cached || fetch(evt.request))
   );
